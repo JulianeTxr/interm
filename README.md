@@ -7,7 +7,7 @@ Repository structure:
 - `codes/` — codes used in the analyses.
 - `datasets/` — datasets used in the analyses.
 
-Article
+
 
 This repository contains the materials associated with the manuscript:
 
