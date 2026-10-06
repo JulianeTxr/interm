@@ -7,7 +7,9 @@
 // Description: This code computes the susceptibility and the quasi-stationary 
 // average of prevalence as function of infection rate for the SIS model in a node
 // intermittent network with power-law degree distribution.
-// See Ref.: referencia do artigo no arxiv
+// See Ref.: Moraes, J. T. and and Ferreira, S. C. (2026). Intermittent quarantine 
+// suppresses epidemic spreading beyond simple contact reduction [Preprint].
+// arXiv. https://doi.org/10.48550/arXiv.2610.00429
 // ==============================================================================
 
 #include<stdio.h>
@@ -124,8 +126,6 @@ int main(int argc,char *argv[]){
 	
       epsilon=rand01_kiss(semente);      
       k = k0*pow((1-(1-pow((k0*pow(kc,-1)),(gamma-1)))*epsilon),C);    
-      
-      if(k>kc){printf("k = %lf \n",k);}
 	
 	a++;
 	dgr[a]=k;
@@ -338,7 +338,9 @@ int main(int argc,char *argv[]){
   /******************************************************************************/
   // SIS model through the OGA in an intermittent net
   // Ref.: Cota and Ferreira, Comp. Phys. Comm. vol 19, pp. 303-312, 2017.
-  // Ref.: incluir ref arxiv paper interm. 
+  // Ref.: Moraes, J. T. and and Ferreira, S. C. (2026). Intermittent quarantine 
+  // suppresses epidemic spreading beyond simple contact reduction [Preprint].
+  // arXiv. https://doi.org/10.48550/arXiv.2610.00429
   /******************************************************************************/
 
   double lambda,deltat,t,p,tmax,Z,tmed,mediarho,mediarho2,X,normp,somap;
@@ -385,7 +387,8 @@ int main(int argc,char *argv[]){
     
     }
   
-    t_rlx = pow(10,2);
+   // t_rlx = pow(10,2);
+    t_rlx = 0.0;
     t0 = t_rlx+5*(pow(10,5));     // transient time 
     tmed = 5*pow(10,5);           // time used for averaging the quantities 
     tmax = tmed+t0;
@@ -411,11 +414,11 @@ int main(int argc,char *argv[]){
  
     s = 0;
     
-    sprintf(filename, "sis_ucm_ni_gamma%.2f_lambdaxrho_beta%.1f_taumed%.1f_N1e%d.dat",gamma,beta,tau_med,expon);
+    sprintf(filename, "sis_ucm_ni_gamma%.2f_lambdaxrho_beta%.1f_taumed%.1f_N1e%d_trlx0.dat",gamma,beta,tau_med,expon);
     FILE *arq3;  
     arq3 = fopen( filename, "a+");
         
-    sprintf(filename, "sis_ucm_ni_gamma%.2f_lambdaxsuscet_beta%.1f_taumed%.1f_N1e%d.dat",gamma,beta,tau_med,expon);
+    sprintf(filename, "sis_ucm_ni_gamma%.2f_lambdaxsuscet_beta%.1f_taumed%.1f_N1e%d_trlx0.dat",gamma,beta,tau_med,expon);
     FILE *arq4;
     arq4 = fopen( filename, "a+");
       
@@ -429,25 +432,35 @@ int main(int argc,char *argv[]){
         sigma[qq]=1;		       //sigma: state list, sigma[i]=1 i is infected, sigma[i]=0 i is susceptible       
       
     }
-  
-    for(q=1;q<=N;q++){
+    
+    while(t<t_rlx){   //loop in t_rlx     
+    
+      for(q=1;q<=N;q++){
       
-      if(t_rlx>t_ch[q]){         // it means the node q should already change its state
+        if(t>t_ch[q]){         // it means the node q should already change its state
       	  
-        do{
+      	  do{
       	  
-          if(EST[q]==1){
-          
-            EST[q]=0;                
+            if(EST[q]==1){    // EST[q]==1 : q is active 	
+                            
+              EST[q]=0;                
                                                
-          }else{EST[q]=1;} 
-   
-          t_ch[q]+= (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
-               
-        }while(t_ch[q]<t_rlx); 		  
-      }
-    }
+            }else{          // q is inactive 
+                            
+              EST[q]=1;
 
+            } 
+   
+            t_ch[q]+= (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
+               
+          }while(t_ch[q]<t); 		  
+        }
+      }
+ 
+      deltat=(tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
+      t+=deltat;
+      
+    }
       
     //printf("lambda = %lf \n",lambda);         // if you want to see what is the lambda being computed
       

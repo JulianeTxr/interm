@@ -1,12 +1,12 @@
 // ==============================================================================
-// File Name: sis_ucm_li.c
+// File Name: sis_rrn_ni.c
 // Author: Juliane T. de Moraes
 // Updated: 2026-09
 // License: MIT
-// Usage: ./sis_ucm_li gamma beta lambda_ini lambda_fin delta_lamb expon smp taumed
+// Usage: ./sir_rrn_ni beta taumed lambda_ini lambda_fin delta_lamb expon
 // Description: This code computes the susceptibility and the quasi-stationary 
-// average of prevalence as function of infection rate for the SIS model in a link
-// intermittent network with power-law degree distribution.
+// average of prevalence as function of infection rate for the SIS model in a
+// node intermittent random regular network.
 // See Ref.: Moraes, J. T. and and Ferreira, S. C. (2026). Intermittent quarantine 
 // suppresses epidemic spreading beyond simple contact reduction [Preprint].
 // arXiv. https://doi.org/10.48550/arXiv.2610.00429
@@ -64,20 +64,19 @@ void kissinit(long idum){
 
 int main(int argc,char *argv[]){
 
-  int N,L,f,e,*adj,a,somadgr,n,g,*S,q,o,stop,*beg,*dgr,*DGR,cont2,alerta,aux,*sigma,s,u,*hub,rr,num,kmax,links,v,h;
-  double gamma,epsilon,*p_k,somap_k,C,k,AA,st_moment,nd_moment,k0,kc,change,prob;
+  int N,L,f,e,*adj,a,somadgr,n,g,*S,q,o,stop,*beg,*dgr,*DGR,cont2,alerta,aux,*sigma,s,u,links,k;
   int semente;
   char filename[4*64];
 	
   int expon,smp;
   
-  if (argc != 9){
-    printf("\n Usage: %s  gamma beta lambda_ini lambda_fin delta_lamb expon smp taumed \n\n",argv[0]);
+  if (argc != 7){
+    printf("\n Usage: %s  beta taumed lambda_ini lambda_fin delta_lamb expon \n\n",argv[0]);
     return 1;
   }
   
   expon = atoi(argv[6]);	// N = 10^expon size of original net
-  smp = atoi(argv[7]);          // net sample
+  smp = 1;                      // net sample
 	
   N=pow(10,expon);
   
@@ -91,8 +90,6 @@ int main(int argc,char *argv[]){
   S = (int *) malloc(Nmax * sizeof(int));
   DGR = (int *) malloc(Nmax * sizeof(int));
   sigma = (int *) malloc(Nmax * sizeof(int));
-  hub = (int *) malloc(Nmax * sizeof(int));
-  p_k = (double *) malloc(Nmax * sizeof(double));
 
   q=0;
   o=0;
@@ -100,26 +97,12 @@ int main(int argc,char *argv[]){
   a=0;
   s=0;
   u=0;
+
   
   /***************************************************************************/
   // Building the network using UCM 
   // Ref. Catanzaro et al. PRE vol. 71, 2, pp. 1-4, 2025
   /***************************************************************************/
-        	      
-  gamma = atof(argv[1]);
-  k0 = 3.0;
-  kc=2*sqrt(N);                             			    
-  C = 1.0/(1.0-gamma);
-  
-  // this two files will give info about the network backbone:
-  
-  sprintf(filename, "sis_ucm%.2f_parameters_N10e%d_net%d.dat",gamma,expon,smp);
-  FILE *arq1;  
-  arq1 = fopen( filename, "a+");	
-  
-  sprintf(filename, "sis_ucm%.2f_degreedistrib_N10e%d_net%d.dat",gamma,expon, smp);
-  FILE *arq2;  
-  arq2 = fopen( filename, "a+");
 	
   do{
 
@@ -129,14 +112,13 @@ int main(int argc,char *argv[]){
     kissinit(semente);  
 	
     do{
-	
-      epsilon=rand01_kiss(semente);      
-      k = k0*pow((1-(1-pow((k0*pow(kc,-1)),(gamma-1)))*epsilon),C);    
-	
-	a++;
-	dgr[a]=k;
-	somadgr+=dgr[a];
-	
+            
+      k=4;
+      a++;
+      dgr[a]=k;
+      somadgr+=dgr[a];
+     
+
     }while(a<N);
     
     aux = somadgr % 2 ;
@@ -149,7 +131,9 @@ int main(int argc,char *argv[]){
 
     beg[g]=L;
     L=L+dgr[g];
+	
   }
+
 
   do{
 
@@ -178,9 +162,11 @@ int main(int argc,char *argv[]){
 	
     } 
 
+	
     n=L;
 
     alerta=0;
+
     links=0;
 
     do{
@@ -199,7 +185,9 @@ int main(int argc,char *argv[]){
 	    stop=1;
 
 	  }
+
 	}
+
 
       if(stop!=1){
     		
@@ -265,78 +253,6 @@ int main(int argc,char *argv[]){
 	
   }while(n>0);
 
-  kmax=1;
-  num=0;
-
-  for(rr=1;rr<=N;rr++){
-
-    if(dgr[rr]>kmax){ 
-
-      kmax=dgr[rr];
-
-    }
-  }
-
-
-  for(rr=1;rr<=N;rr++){
-
-    if(dgr[rr]==kmax){   
-
-      num++;
-
-      hub[num]=rr;
-      
-      fprintf(arq1,"hub: %d \n",rr);
-	
-    }
-  }
-  
-  for(f=1;f<=N;f++){    
-
-    p_k[f]=0;    
-	
-  }
-
-  for(e=1;e<=N;e++){  
-
-    p_k[dgr[e]]++;					//creating the distribution
-
-  }
-
-  somap_k=0.0;
-
-  for(e=1;e<=N;e++){
-
-    somap_k+=p_k[e];
-
-  }
-
-  AA=pow(somap_k,-1);
-  
-
-  for(e=1;e<=N;e++){  
-
-    if(p_k[e]!=0){		
-		
-      fprintf(arq2,"%d %e \n",e,AA*p_k[e]);  // normalized degree distribution
-
-    }
-  }
-
-  st_moment=0.0;
-  nd_moment=0.0;
-
-  for(v=k0;v<=kmax;v++){
-
-    st_moment+=v*AA*p_k[v];
-    nd_moment+=(v*v)*AA*p_k[v];
-
-  }
-
-  fprintf(arq1,"N = %d \nst moment = %lf \nnd moment = %lf \nkmax = %d \n# hubs = %d \n",N,st_moment,nd_moment,kmax,num);
-
-  fclose(arq1);
-  fclose(arq2);
   
   // finished the building of the network
   /******************************************************************************/
@@ -348,11 +264,11 @@ int main(int argc,char *argv[]){
   // suppresses epidemic spreading beyond simple contact reduction [Preprint].
   // arXiv. https://doi.org/10.48550/arXiv.2610.00429
   /******************************************************************************/
-  
-  
-  double lambda,deltat,t,p,tmax,Z,tmed,mediarho,mediarho2,X,normp,somap,t_rlx;
-  double beta,*t_ch,tau_med,tau0,r,lambda_ini,lambda_fin,delta_lambda,*P,aa,pp;
-  int Ni,*I,viz,Q,qq,t0,Nn,*EST,L_act,b,i,aresta,ra;    
+
+
+  double lambda,deltat,t,p,tmax,Z,tmed,mediarho,mediarho2,X,normp,somap;
+  double beta,*t_ch,tau_med,tau0,r,lambda_ini,lambda_fin,delta_lambda,*P,prob,t_rlx;
+  int Ni,*I,viz,Q,qq,t0,Nn,*EST,N_act,b,i;    
     
   // variables of the epidemic process 
 
@@ -364,15 +280,14 @@ int main(int argc,char *argv[]){
   
   P = (double *) malloc(Nmax * sizeof(double));
   
-  t_ch = (double *) malloc(Nmax * sizeof(double));  
-       
+  t_ch = (double *) malloc(Nmax * sizeof(double));       
   // constants for the inter-event time distribution
     
-  beta = atof(argv[2]);         // exponent for the power-law distribution 
+  beta = atof(argv[1]);         // exponent for the power-law distribution 
     
   tau0 = 0.05;         // constant of the power-law distribution 
     
-  tau_med = atof(argv[8]);
+  tau_med = atof(argv[2]);
     
   r = beta*(tau_med - tau0) + tau0 - 2*tau_med ; 
     
@@ -388,7 +303,6 @@ int main(int argc,char *argv[]){
   lambda = lambda_ini;    // initial value of lambda
     
   do{               //  loop in lambda 
-
       
     for(i=1;i<=N;i++){
     
@@ -396,76 +310,37 @@ int main(int argc,char *argv[]){
     
     }
     
-    
     t_rlx = pow(10,2);
-    t0 = t_rlx+5*(pow(10,5));     // transient time 
-    tmed = 5*pow(10,5);           // time used for averaging the quantities 
+    t0 = t_rlx+5*pow(10,5);     // transient time 
+    tmed = 5*pow(10,5);    // time used for averaging the quantities 
     tmax = tmed+t0;
     
     t = 0.0;
     
-    //distributing the time of the first change of each link, according to the inter-event time distribution
+    //Setting the initial conditions of the intermittent network
+    N_act=0;
     
-    for(i=1;i<=N;i++){
-    
-      for(f=beg[i]+1;f<=beg[i]+dgr[i];f++){
-      	
-      	prob = rand01_kiss(semente);
-      	
-      	if(prob>0.5){EST[f]=1;}else{EST[f]=0;}
-      	
-	change = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
-	t_ch[f]=change;
-        
-        for(g=beg[adj[f]]+1;g<=beg[adj[f]]+dgr[adj[f]];g++){
-          
-          if(adj[g]==i){ 
-            
-            EST[g]=EST[f];
-            t_ch[g]=change;
-          
-          } 
-        }	
-      }
-    }
-    
-    L_act=0;
-        
-    for(qq=1;qq<=L;qq++){
-    
-    L_act+=EST[qq];
-    
-    }
-    
-    // Iterating the network before the epidemics for a time = t_rlx
-    
-    for(q=1;q<=L;q++){
+    for(f=1;f<=N;f++){
       
-      if(t_rlx>t_ch[q]){         // it means the link q should already change its state
-      	  
-        do{
-      	  
-          if(EST[q]==1){
-          
-            EST[q]=0;                
-                                               
-          }else{EST[q]=1;} 
-   
-          t_ch[q]+= (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
-               
-        }while(t_ch[q]<t_rlx); 		  
-      }
-    }
+      prob = rand01_kiss(semente);
+      	
+      if(prob>0.5){EST[f]=1;}else{EST[f]=0;}
+      	
+      t_ch[f] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
+		
+      N_act+=EST[f];
       
+    }
+    
+    
+
     s = 0;
     
-    aresta = 0;
-    
-    sprintf(filename, "sis_ucm_li_gamma%.2f_lambdaxrho_beta%.1f_taumed%.1f_N1e%d.dat",gamma,beta,tau_med,expon);
+    sprintf(filename, "sis_rrn_ni_lambdaxrho_beta%.1f_taumed%.1f_N10e%d.dat",beta,tau_med,expon);
     FILE *arq3;  
     arq3 = fopen( filename, "a+");
         
-    sprintf(filename, "sis_ucm_li_ucm_gamma%.2f_lambdaxsuscet_beta%.1f_taumed%.1f_N1e%d.dat",gamma,beta,tau_med,expon);
+    sprintf(filename, "sis_rrn_ni_lambdaxsuscet_beta%.1f_taumed%.1f_N10e%d.dat",beta,tau_med,expon);
     FILE *arq4;
     arq4 = fopen( filename, "a+");
       
@@ -480,9 +355,30 @@ int main(int argc,char *argv[]){
       
     }
       
-    //printf("lambda = %lf \n",lambda);         // if you want to see what is the lambda being computed
+    for(q=1;q<=N;q++){
       
-    do{                                 //loop in time
+      if(t_rlx>t_ch[q]){         // it means the node q should already change its state
+      	  
+        do{
+      	  
+          if(EST[q]==1){
+          
+            EST[q]=0;                
+                                               
+          }else{EST[q]=1;} 
+   
+          t_ch[q]+= (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
+               
+        }while(t_ch[q]<t_rlx); 		  
+      }
+    }
+
+      
+    //printf("lambda = %lf \n",lambda);         // if you want to see what is the lambda being computed
+    
+    
+      
+    do{     //loop in time
             
       Z=rand01_kiss(semente);
         
@@ -499,95 +395,100 @@ int main(int argc,char *argv[]){
 
                 
       if(Z<p){		// Infection event
-                	      
-        do{			//choosing proportionally to degree
+      
+        Q=(Ni)*rand01_kiss(semente)+1;		
 
-	  ra=0;
-
-	  Q=(Ni)*rand01_kiss(semente)+1;		
-
-	  q=I[Q];	
-
-	  pp = rand01_kiss(semente);
-
-	  aa = dgr[q]*pow(kmax,-1);	
-
-	  if(pp<aa){
-
-	    ra=1;
-
-	  }
-	
-	}while(ra!=1);
-				
-	b=(dgr[q])*rand01_kiss(semente)+1; 	
-        viz = adj[beg[q]+b];          
-   	                  	  
-        if(sigma[viz]==0){ 
-                    
-        aresta = beg[q]+b;
-                       
-        if(t>t_ch[aresta]){      
-                    	
+        q=I[Q];          	      
+   	            
+        if(t>t_ch[q]){         // it means the node q should already change its state
+		        
           do{
-                                                           
-            if(EST[aresta]==1){	
-                            
-              EST[aresta]=0;
-                                                                                                                      
-            }else{		
-                            
-              EST[aresta]=1;
-                  
-            }
-                        
-            t_ch[aresta] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r + t_ch[aresta];
-                      
-          }while(t_ch[aresta]<t);      
-            
-          for(g=beg[adj[aresta]]+1;g<=beg[adj[aresta]]+dgr[adj[aresta]];g++){         // the ends of the link are found in the adjacency list
-          
-            if(adj[g]==q){ 
-              
-              EST[g] = EST[aresta];           
-              t_ch[g] = t_ch[aresta];
-            
-              
-            }     
-          }                    
-        }
-      	  
-        if(EST[aresta]==1){         //if the link is active the infection occurs
-        
-          Ni++;
-                        
-          I[Ni]=viz;
-                        
-          Nn=Nn+dgr[viz];
-                        
-          sigma[viz]=1;
-                        
-        }
-                            
-      }
                 
-    }else{ 		//q becomes susceptible
+            if(EST[q]==1){    // EST[q]==1 : q is active 	
+                            
+              EST[q]=0;                
+                             
+            }else{          // q is inactive 
+                            
+              EST[q]=1;
+              
+            } 
+   
+            t_ch[q] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r + t_ch[q];
+               
+          }while(t_ch[q]<t); 		  
+        }
+            
+        if(EST[q]==1){		// the node is active, so the infection occurs 
+  
+          b=(dgr[q])*rand01_kiss(semente)+1;    //randomly choosing between neighbors of q
+      	  viz = adj[beg[q]+b];
+      	  
+   	  if(t>t_ch[viz]){         // it means the node viz should already change its state
+		        
+            do{
+                
+              if(EST[viz]==1){    // EST[viz]==1 : viz is active 	
+                            
+                EST[viz]=0;                  
+                                          
+              }else{          // viz is inactive 
+                            
+                EST[viz]=1;
+
+              } 
+   
+              t_ch[viz] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r + t_ch[viz];
+               
+            }while(t_ch[viz]<t); 		  
+          }
+      		
+          if((sigma[viz]==0) && (EST[viz]==1)){   // if the neighbor is active and susceptible the infection occurs
+ 
+            Ni++;
+            I[Ni]=viz;
+            Nn=Nn+dgr[viz];
+            sigma[viz]=1;
+             
+          }
+                            
+        }
+                
+      }else{ 		//q becomes susceptible
             
         Q=(Ni)*rand01_kiss(semente)+1;		
 	q=I[Q];	
-	         
+	
+        if(t>t_ch[q]){         // it means the node q should already change its state
+		        
+          do{
+                
+            if(EST[q]==1){    // EST[q]==1 : q is active 	
+                            
+              EST[q]=0;                
+                                  
+            }else{          // q is inactive 
+                            
+              EST[q]=1;
+              
+            } 
+   
+            t_ch[q] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r + t_ch[q];
+               
+          }while(t_ch[q]<t); 		  
+        }
+                
         sigma[q]=0;
         I[Q]=I[Ni];  
         Ni--;
         Nn=Nn-dgr[q];
 
-        if(Ni==0){		//absorbing state - hub reactivation
+        if(Ni==0){		//absorbing state
 	
-	  h=(num)*rand01_kiss(semente)+1; 	  
-  	  Ni++;	
-	  Nn=Nn+dgr[hub[h]];
-	  I[Ni]=hub[h];
-	  sigma[hub[h]]=1;
+	  Ni++;	
+	  Nn=Nn+dgr[q];
+	  I[Ni]=q;
+	  sigma[q]=1;
 	       	  
         } 
       }
@@ -612,14 +513,14 @@ int main(int argc,char *argv[]){
     for(i=1;i<=N;i++){
 
       mediarho+=i*normp*P[i];
-      mediarho2+=(i*i)*normp*P[i];
+      mediarho2+=pow(i,2)*normp*P[i];
 
     }
      
-    X=(mediarho2-(mediarho*mediarho))/(mediarho);
+    X=(mediarho2-pow(mediarho,2))*pow(mediarho,-1);
         
         
-    fprintf(arq3,"%lf %e \n",lambda,mediarho);
+    fprintf(arq3,"%lf %e %e \n",lambda,mediarho,mediarho2);
     fprintf(arq4,"%lf %e \n",lambda,X);
         
     a++;
@@ -635,20 +536,14 @@ int main(int argc,char *argv[]){
     free(I);
     free(sigma);
     free(EST);
-
-    
     free(dgr);
     free(beg);
     free(adj);
-    
     free(P);
     free(t_ch);
-
-    free(p_k);
     free(S);
     free(DGR);
-    free(hub);
-
+  
     return (0);
 }
 

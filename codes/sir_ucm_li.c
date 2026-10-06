@@ -1,12 +1,11 @@
 // ==============================================================================
-// File Name: sis_ucm_li.c
+// File Name: sir_ucm_li.c
 // Author: Juliane T. de Moraes
 // Updated: 2026-09
 // License: MIT
-// Usage: ./sis_ucm_li gamma beta lambda_ini lambda_fin delta_lamb expon smp taumed
-// Description: This code computes the susceptibility and the quasi-stationary 
-// average of prevalence as function of infection rate for the SIS model in a link
-// intermittent network with power-law degree distribution.
+// Usage: ./sir_ucm_li gamma beta lambda_ini lambda_fin delta_lamb expon smp taumed
+// Description: This code computes the variability as function of infection rate for 
+// the SIR model in a link intermittent network with power-law degree distribution.
 // See Ref.: Moraes, J. T. and and Ferreira, S. C. (2026). Intermittent quarantine 
 // suppresses epidemic spreading beyond simple contact reduction [Preprint].
 // arXiv. https://doi.org/10.48550/arXiv.2610.00429
@@ -23,11 +22,8 @@
 #define IM 2147483647
 #define IQ 127773
 #define IR 2836
-
 #define Nmax 1000000000
-
 unsigned int z, jsr, w, jcong;
-
 double rand01_kiss(){
    z = 69069*z+1327217885;
    jsr^= (jsr<<13); jsr^=(jsr>>17); jsr^=(jsr<<5);
@@ -35,7 +31,6 @@ double rand01_kiss(){
    jcong = 30903 * (jcong & 65535) + (jcong >> 16);
    return( (z + jsr + (w << 16) +jcong) * 2.328306436538696e-10);
 }
-
 void kissinit(long idum){
    int k;
    idum= abs(1099087573 * idum);
@@ -58,14 +53,14 @@ void kissinit(long idum){
    idum=IA*(idum-k*IQ)-IR*k;
    if (idum < 0) idum += IM;
    if (idum < 1) jcong=idum+1; else jcong=idum;
-
  } 
  // ------------------------------------------------
 
+
 int main(int argc,char *argv[]){
 
-  int N,L,f,e,*adj,a,somadgr,n,g,*S,q,o,stop,*beg,*dgr,*DGR,cont2,alerta,aux,*sigma,s,u,*hub,rr,num,kmax,links,v,h;
-  double gamma,epsilon,*p_k,somap_k,C,k,AA,st_moment,nd_moment,k0,kc,change,prob;
+  int N,L,f,e,*adj,a,somadgr,n,g,*S,q,o,stop,*beg,*dgr,*DGR,cont2,alerta,aux,*sigma,s,u,*hub,rr,num,kmax,links,v,ra;
+  double gamma,epsilon,*p_k,somap_k,C,k,AA,st_moment,nd_moment,k0,kc,pp,aa;
   int semente;
   char filename[4*64];
 	
@@ -76,11 +71,9 @@ int main(int argc,char *argv[]){
     return 1;
   }
   
-  expon = atoi(argv[6]);	// N = 10^expon size of original net
+  expon = atoi(argv[6]);	// N = 10^expon: size of original net
   smp = atoi(argv[7]);          // net sample
-	
   N=pow(10,expon);
-  
   semente = 10*smp;
 
   kissinit(semente);  
@@ -100,7 +93,7 @@ int main(int argc,char *argv[]){
   a=0;
   s=0;
   u=0;
-  
+
   /***************************************************************************/
   // Building the network using UCM 
   // Ref. Catanzaro et al. PRE vol. 71, 2, pp. 1-4, 2025
@@ -341,31 +334,25 @@ int main(int argc,char *argv[]){
   // finished the building of the network
   /******************************************************************************/
 
+  
   /******************************************************************************/
-  // SIS model through the OGA in an intermittent net
+  // SIR model through the OGA in an intermittent net
   // Ref.: Cota and Ferreira, Comp. Phys. Comm. vol 19, pp. 303-312, 2017.
   // Ref.: Moraes, J. T. and and Ferreira, S. C. (2026). Intermittent quarantine 
   // suppresses epidemic spreading beyond simple contact reduction [Preprint].
   // arXiv. https://doi.org/10.48550/arXiv.2610.00429
   /******************************************************************************/
-  
-  
-  double lambda,deltat,t,p,tmax,Z,tmed,mediarho,mediarho2,X,normp,somap,t_rlx;
-  double beta,*t_ch,tau_med,tau0,r,lambda_ini,lambda_fin,delta_lambda,*P,aa,pp;
-  int Ni,*I,viz,Q,qq,t0,Nn,*EST,L_act,b,i,aresta,ra;    
-    
-  // variables of the epidemic process 
-
-  I = (int *) malloc(Nmax * sizeof(int));
    
+  double lambda,deltat,t,p,rho_rec,Z,somarho_rec,somarho2_rec,*mediarho_rec,*mediarho2_rec,*Delta,*mediat,somat;
+  double beta,tau0,*t_ch,lambda_ini,lambda_fin,delta_lambda,r,tau_med,change,t_rlx,prob;
+  int Ni,*I,Q,b,Nn,ams,ams_max,ini,Nr,*R,i,*EST,viz,aresta;     
+	
   // variables of the intermittency
     
-  EST = (int *) malloc(Nmax * sizeof(int));   // EST def. the state of the node EST = 1 the node is active, EST = 0 inactive 
+  EST = (int *) malloc(Nmax * sizeof(int));   // if EST = 1 the node is active, EST = 0 inactive 
+  t_ch = (double *) malloc(Nmax * sizeof(double));       
   
-  P = (double *) malloc(Nmax * sizeof(double));
   
-  t_ch = (double *) malloc(Nmax * sizeof(double));  
-       
   // constants for the inter-event time distribution
     
   beta = atof(argv[2]);         // exponent for the power-law distribution 
@@ -376,279 +363,269 @@ int main(int argc,char *argv[]){
     
   r = beta*(tau_med - tau0) + tau0 - 2*tau_med ; 
     
-  q=0;
   o=0;
   u=0;
+  b=0;
   a=1;
-    
+  q=0;
+  aux=0;
+  s=0;
+
+  I = (int *) malloc(Nmax * sizeof(int));   // infected nodes' list
+  R = (int *) malloc(Nmax * sizeof(int));   // recovered nodes' list
+  mediarho_rec = (double *) malloc(Nmax * sizeof(double));
+  mediarho2_rec = (double *) malloc(Nmax * sizeof(double));	
+  Delta = (double *) malloc(Nmax * sizeof(double));		// Delta is the epidemic variability
+  mediat = (double *) malloc(Nmax * sizeof(double));
+
   lambda_ini = atof(argv[3]);
   lambda_fin = atof(argv[4]);
   delta_lambda = atof(argv[5]);
+
   
   lambda = lambda_ini;    // initial value of lambda
     
-  do{               //  loop in lambda 
+			
+  ams_max = pow(10,4);		// how many times the absorbing state is reached 
 
-      
-    for(i=1;i<=N;i++){
-    
-      P[i]=0.0;     
-    
-    }
-    
-    
-    t_rlx = pow(10,2);
-    t0 = t_rlx+5*(pow(10,5));     // transient time 
-    tmed = 5*pow(10,5);           // time used for averaging the quantities 
-    tmax = tmed+t0;
-    
-    t = 0.0;
-    
-    //distributing the time of the first change of each link, according to the inter-event time distribution
-    
-    for(i=1;i<=N;i++){
-    
-      for(f=beg[i]+1;f<=beg[i]+dgr[i];f++){
-      	
-      	prob = rand01_kiss(semente);
-      	
-      	if(prob>0.5){EST[f]=1;}else{EST[f]=0;}
-      	
-	change = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
-	t_ch[f]=change;
+
+  for(i=1;i<=N;i++){ 		// all the nodes, except for one, begin susceptible
+
+    sigma[i] = 0;
+
+  }
+
+
+  do{			//loop in lambda
+  
+  //printf("lambda = %lf \n",lambda);
+  
+    		
+    sprintf(filename, "sir_ucm_li_2-75_beta%.1f_lambdaxrho-rec_N10e%d_net%d_taumed%.1f.dat",beta,expon, smp,tau_med);
+    FILE *arq2;         
+    arq2 = fopen( filename, "a+");
         
-        for(g=beg[adj[f]]+1;g<=beg[adj[f]]+dgr[adj[f]];g++){
-          
-          if(adj[g]==i){ 
-            
-            EST[g]=EST[f];
-            t_ch[g]=change;
-          
-          } 
-        }	
-      }
-    }
-    
-    L_act=0;
-        
-    for(qq=1;qq<=L;qq++){
-    
-    L_act+=EST[qq];
-    
-    }
-    
-    // Iterating the network before the epidemics for a time = t_rlx
-    
-    for(q=1;q<=L;q++){
-      
-      if(t_rlx>t_ch[q]){         // it means the link q should already change its state
-      	  
-        do{
-      	  
-          if(EST[q]==1){
-          
-            EST[q]=0;                
-                                               
-          }else{EST[q]=1;} 
-   
-          t_ch[q]+= (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
-               
-        }while(t_ch[q]<t_rlx); 		  
-      }
-    }
-      
-    s = 0;
-    
-    aresta = 0;
-    
-    sprintf(filename, "sis_ucm_li_gamma%.2f_lambdaxrho_beta%.1f_taumed%.1f_N1e%d.dat",gamma,beta,tau_med,expon);
-    FILE *arq3;  
+    sprintf(filename, "sir_ucm_li_2-75_beta%.1f_lambdaxDelta_N10e%d_net%d_taumed%.1f.dat",beta,expon,smp,tau_med);
+    FILE *arq3;         
     arq3 = fopen( filename, "a+");
         
-    sprintf(filename, "sis_ucm_li_ucm_gamma%.2f_lambdaxsuscet_beta%.1f_taumed%.1f_N1e%d.dat",gamma,beta,tau_med,expon);
-    FILE *arq4;
+    sprintf(filename, "sir_ucm_li_2-75_beta%.1f_lambdaxtmax-med_N10e%d_net%d_taumed%.1f.dat",beta,expon,smp,tau_med);
+    FILE *arq4;         
     arq4 = fopen( filename, "a+");
-      
+
+
+    ams = 1; 		
+
+    somarho_rec = 0.0;	
+    somarho2_rec = 0.0;
+    somat = 0.0;
+    t_rlx = pow(10,2);
+    
+    t=0.0;
+	
+	
+    do{   //loop samples
+	
+      for(i=1;i<=N;i++){          //initial conditions for intermittency 
+    
+        for(f=beg[i]+1;f<=beg[i]+dgr[i];f++){
+      	
+      	  prob = rand01_kiss(semente);
+      	
+      	  if(prob>0.5){EST[f]=1;}else{EST[f]=0;}
+      	
+	  change = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
+	  t_ch[f]=change;
         
-    Ni=N;
-    Nn=somadgr;			        //  Nn is the sum of the degrees of the infected nodes
-        
-    for(qq=1;qq<=Ni;qq++){		//  Initial condition for the epidemic model
-            
-        I[qq]=qq;			//I[N+1] is the list of infected node 
-        sigma[qq]=1;		        //sigma is a state list, sigma[i]=1 i is infected, sigma[i]=0 i is susceptible       
-      
-    }
-      
-    //printf("lambda = %lf \n",lambda);         // if you want to see what is the lambda being computed
-      
-    do{                                 //loop in time
-            
-      Z=rand01_kiss(semente);
-        
-      p=(lambda*Nn)*pow((Ni+(lambda*Nn)),-1);
-        
-      deltat=-log(rand01_kiss(semente)+pow(10,-8))*pow((Ni+(lambda*Nn)),-1);
-            
-        
-      if(t>t0){
-        
-        P[Ni]+=deltat;     
+          for(g=beg[adj[f]]+1;g<=beg[adj[f]]+dgr[adj[f]];g++){
           
+            if(adj[g]==i){ 
+            
+              EST[g]=EST[f];
+              t_ch[g]=change;
+          
+            } 
+          }	
+        }
       }
+      
+            
+      for(q=1;q<=L;q++){
+      
+        if(t_rlx>t_ch[q]){         // it means the node q should already change its state
+      	  
+          do{
+      	  
+            if(EST[q]==1){
+          
+              EST[q]=0;                
+                                               
+            }else{EST[q]=1;} 
+   
+            t_ch[q]+= (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r;
+               
+          }while(t_ch[q]<t_rlx); 		  
+        }
+      }
+    
+    
+      ini = (N)*rand01_kiss(semente)+1;	// randomly choose a node to infect
 
-                
-      if(Z<p){		// Infection event
-                	      
-        do{			//choosing proportionally to degree
+		
+      Ni = 1;		        
+      I[1] = ini;		
+      sigma[ini] = 1; 
+      Nn = dgr[ini];		
 
-	  ra=0;
+      Nr=0;				
 
-	  Q=(Ni)*rand01_kiss(semente)+1;		
+      do{
 
-	  q=I[Q];	
+	Z = rand01_kiss(semente);
+	p = lambda*Nn*pow((Ni+lambda*Nn),-1);
 
-	  pp = rand01_kiss(semente);
+        if(Z<p){		// An infection will occur
 
-	  aa = dgr[q]*pow(kmax,-1);	
+	  do{			// choosing a node proportionally to its degree
 
-	  if(pp<aa){
+	    ra=0;
 
-	    ra=1;
+	    Q=(Ni)*rand01_kiss(semente)+1;		
+	    q=I[Q];	
 
+	    pp = rand01_kiss(semente);
+	    aa = dgr[q]*pow(kmax,-1);	
+
+	    if(pp<aa){ra=1;}
+	
+	  }while(ra!=1);
+	    
+          b=(dgr[q])*rand01_kiss(semente)+1;    
+      	  viz = adj[beg[q]+b];
+      	  
+      	  if(sigma[viz]==0){ 
+                    
+            aresta = beg[q]+b;
+                       
+            if(t>t_ch[aresta]){      
+                    	
+            do{
+                                                           
+              if(EST[aresta]==1){	
+                            
+                EST[aresta]=0;
+                                                                                                                      
+              }else{		
+                            
+                EST[aresta]=1;
+                  
+              }
+                        
+              t_ch[aresta] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r + t_ch[aresta];
+                      
+            }while(t_ch[aresta]<t);      
+            
+            for(g=beg[adj[aresta]]+1;g<=beg[adj[aresta]]+dgr[adj[aresta]];g++){    
+          
+              if(adj[g]==q){ 
+              
+                EST[g] = EST[aresta];           
+                t_ch[g] = t_ch[aresta];
+            
+
+              }     
+            }                    
+          }
+	    
+          if(EST[aresta]==1){   
+
+	    Ni++;       
+            I[Ni]=viz;         
+            Nn=Nn+dgr[viz];             
+            sigma[viz]=1;
+	   
+	    }
 	  }
 	
-	}while(ra!=1);
-				
-	b=(dgr[q])*rand01_kiss(semente)+1; 	
-        viz = adj[beg[q]+b];          
-   	                  	  
-        if(sigma[viz]==0){ 
-                    
-        aresta = beg[q]+b;
-                       
-        if(t>t_ch[aresta]){      
-                    	
-          do{
-                                                           
-            if(EST[aresta]==1){	
-                            
-              EST[aresta]=0;
-                                                                                                                      
-            }else{		
-                            
-              EST[aresta]=1;
-                  
-            }
-                        
-            t_ch[aresta] = (tau0+r)*pow((1-rand01_kiss(semente)),(pow((-beta+1),-1))) - r + t_ch[aresta];
-                      
-          }while(t_ch[aresta]<t);      
-            
-          for(g=beg[adj[aresta]]+1;g<=beg[adj[aresta]]+dgr[adj[aresta]];g++){         // the ends of the link are found in the adjacency list
-          
-            if(adj[g]==q){ 
-              
-              EST[g] = EST[aresta];           
-              t_ch[g] = t_ch[aresta];
-            
-              
-            }     
-          }                    
-        }
-      	  
-        if(EST[aresta]==1){         //if the link is active the infection occurs
-        
-          Ni++;
-                        
-          I[Ni]=viz;
-                        
-          Nn=Nn+dgr[viz];
-                        
-          sigma[viz]=1;
-                        
-        }
-                            
-      }
-                
-    }else{ 		//q becomes susceptible
-            
-        Q=(Ni)*rand01_kiss(semente)+1;		
-	q=I[Q];	
-	         
-        sigma[q]=0;
-        I[Q]=I[Ni];  
-        Ni--;
-        Nn=Nn-dgr[q];
+        }else{		                              // A recovery will occur
 
-        if(Ni==0){		//absorbing state - hub reactivation
+	  Q=(Ni)*rand01_kiss(semente)+1;		//randomly choose between the infected nodes
+          q=I[Q];	
+        
+	  sigma[q]=2;			// recover q
+	  I[Q]=I[Ni];
+	  Ni--;
+	  Nn=Nn-dgr[q];
+
+	  Nr++;				// increase the number of recovered   
+	  R[Nr]=q;			// place it in a recovered nodes' list
 	
-	  h=(num)*rand01_kiss(semente)+1; 	  
-  	  Ni++;	
-	  Nn=Nn+dgr[hub[h]];
-	  I[Ni]=hub[h];
-	  sigma[hub[h]]=1;
-	       	  
         } 
-      }
-  
-      t+=deltat;
 
-    }while(t<tmax);
-        
-    mediarho=0.0;
-    mediarho2=0.0;  
-    somap=0.0;
-      
-    for(i=1;i<=N;i++){
-      
-      somap+=P[i];          
-    
-    }
-      
-      
-    normp = pow(somap,-1);   
-        
-    for(i=1;i<=N;i++){
+	
+	if(Ni!=0){
 
-      mediarho+=i*normp*P[i];
-      mediarho2+=(i*i)*normp*P[i];
+          deltat=-log(rand01_kiss(semente)+pow(10,-8))*pow((Ni+(lambda*Nn)),-1);
+	  t+=deltat;	
+	}
 
-    }
-     
-    X=(mediarho2-(mediarho*mediarho))/(mediarho);
-        
-        
-    fprintf(arq3,"%lf %e \n",lambda,mediarho);
-    fprintf(arq4,"%lf %e \n",lambda,X);
-        
-    a++;
-        
+      }while(Ni!=0);  	
+	
+      rho_rec = Nr*pow(N,-1);		
+      somarho_rec+=rho_rec; 	
+      somarho2_rec+=rho_rec*rho_rec;
+      somat+=t;
+	
+      // resetting the initial conditions      
+
+      for(i=1;i<=Nr;i++){		
+
+        sigma[R[i]]=0;			
+
+      }	
+
+      ams++;
+
+    }while(ams<=ams_max);		
+
+    mediat[a] = somat*pow(ams_max,-1); 
+    mediarho_rec[a] = somarho_rec*pow(ams_max,-1); 		
+    mediarho2_rec[a] = somarho2_rec*pow(ams_max,-1); 	
+
+    Delta[a] = pow((mediarho2_rec[a] - (mediarho_rec[a]*mediarho_rec[a])),0.5)*pow(mediarho_rec[a],-1);
+
+    fprintf(arq2,"%lf %e \n",lambda,mediarho_rec[a]);	
+    fprintf(arq3,"%lf %e \n",lambda,Delta[a]);	
+    fprintf(arq4,"%lf %e \n",lambda,mediat[a]);	
+
+    a++;						
+
     lambda+=delta_lambda;
-         
+
+
+    fclose(arq2);
     fclose(arq3);
     fclose(arq4);
 
   }while(lambda<=lambda_fin);
-    
+	
+  free(I);
+  free(R);
+  free(sigma);	
+  free(mediarho_rec);
+  free(mediarho2_rec);
+  free(mediat);
+  free(Delta);
+  free(EST);
+  free(t_ch);
+  free(hub);
+  free(DGR);
+  free(S);
+  free(dgr);
+  free(beg);
+  free(p_k);
+  free(adj);
 
-    free(I);
-    free(sigma);
-    free(EST);
-
-    
-    free(dgr);
-    free(beg);
-    free(adj);
-    
-    free(P);
-    free(t_ch);
-
-    free(p_k);
-    free(S);
-    free(DGR);
-    free(hub);
-
-    return (0);
+  return (0);
 }
 
